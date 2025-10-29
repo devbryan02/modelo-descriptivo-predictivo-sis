@@ -1,0 +1,41 @@
+#!/bin/sh
+# Prevent committing the large dataset or any file >100MB
+# This hook is versioned in the repo; configure git to use .githooks as hooksPath:
+#   git config core.hooksPath .githooks
+
+MAX_BYTES=$((100 * 1024 * 1024))
+BAD=0
+
+echo "Running pre-commit checks: no app/static/dataset.csv and no files >100MB"
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+for f in $STAGED_FILES; do
+  # Skip if file was deleted
+  [ -e "$f" ] || continue
+
+  # Specific forbidden path
+  case "$f" in
+    app/static/dataset.csv)
+      echo "ERROR: Committing app/static/dataset.csv is blocked. Move it outside the repo or add it to .gitignore." >&2
+      BAD=1
+      ;;
+  esac
+
+  # Check file size
+  if [ -f "$f" ]; then
+    sz=$(stat -c%s "$f" 2>/dev/null || echo 0)
+    if [ "$sz" -gt "$MAX_BYTES" ]; then
+      echo "ERROR: File '$f' is larger than 100MB ($sz bytes). Commit aborted." >&2
+      BAD=1
+    fi
+  fi
+done
+
+if [ "$BAD" -ne 0 ]; then
+  echo "Pre-commit checks failed. Remove or unstaged the offending files and try again." >&2
+  exit 1
+fi
+
+exit 0
