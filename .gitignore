@@ -197,3 +197,6 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Ignore local repository backup archives created during reset
+.git-backup-*.tar.gz
