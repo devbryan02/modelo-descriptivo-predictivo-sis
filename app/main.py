@@ -84,14 +84,26 @@ async def root():
         "redoc": "/redoc",
         "health": "/health",
         "endpoints": {
-            "estadisticas_generales": "/api/v1/atenciones/estadisticas",
-            "por_region": "/api/v1/atenciones/por-region",
-            "por_servicio": "/api/v1/atenciones/por-servicio",
-            "demografico": "/api/v1/atenciones/demografico",
-            "tendencias": "/api/v1/atenciones/tendencias",
-            "buscar": "/api/v1/atenciones/buscar"
+            "analisis": {
+                "estadisticas_generales": "/api/v1/atenciones/estadisticas",
+                "por_region": "/api/v1/atenciones/por-region",
+                "por_servicio": "/api/v1/atenciones/por-servicio",
+                "demografico": "/api/v1/atenciones/demografico",
+                "tendencias": "/api/v1/atenciones/tendencias",
+                "buscar": "/api/v1/atenciones/buscar"
+            },
+            "prediccion": {
+                "demanda_individual": "/api/v1/prediccion/demanda",
+                "demanda_batch": "/api/v1/prediccion/batch",
+                "info_modelos": "/api/v1/prediccion/modelos"
+            }
         },
-        "environment": settings.ENVIRONMENT
+        "environment": settings.ENVIRONMENT,
+        "features": [
+            "Análisis descriptivo de atenciones del SIS",
+            "Predicción de demanda con Machine Learning",
+            "Modelos: Linear Regression, Random Forest, Gradient Boosting"
+        ]
     }
 
 # Manejador de errores global

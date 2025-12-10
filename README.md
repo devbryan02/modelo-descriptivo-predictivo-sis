@@ -1,701 +1,524 @@
 # 🏥 API del Sistema de Análisis del SIS
 
-API REST para el análisis de datos del Sistema Integral de Salud (SIS) del Perú. Esta API proporciona endpoints para analizar atenciones médicas, generar estadísticas y obtener insights sobre los servicios de salud.
+API REST para el análisis de datos del Sistema Integral de Salud (SIS) del Perú. 
 
-## 📋 Información General
+## 🎯 Características
 
-**Base URL:** `http://localhost:8000`
+✅ **Análisis Descriptivo** - Estadísticas, tendencias y visualización de datos históricos  
+✅ **Predicción con ML** - Modelos de Machine Learning para predecir demanda futura
 
-**Documentación interactiva:** 
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+---
 
-**Formato de respuesta:** JSON
+## 📚 Documentación Completa
 
-**Versión:** 1.0.0
+### 📊 [Análisis Descriptivo](./README_DESCRIPTIVO.md)
+Endpoints para análisis estadístico de atenciones:
+- ✅ Estadísticas generales
+- ✅ Análisis por región y servicios
+- ✅ Análisis demográfico
+- ✅ Tendencias temporales
+- ✅ Búsqueda avanzada
+
+### 🤖 [Predicción de Demanda](./README_PREDICTIVO.md)
+Endpoints de Machine Learning:
+- ✅ Predicción individual de demanda
+- ✅ Predicción masiva (batch)
+- ✅ Información de modelos
+- ✅ Gestión de cache
+
+---
+
+## 📋 Requisitos Previos
+
+Antes de comenzar, asegúrate de tener instalado:
+
+- **Python 3.10 o superior** ([Descargar](https://www.python.org/downloads/))
+- **PostgreSQL 12 o superior** ([Descargar](https://www.postgresql.org/download/))
+- **Git** ([Descargar](https://git-scm.com/downloads))
+- **pip** (viene con Python)
+
+### Verificar Instalaciones
+```bash
+python --version    # Debe mostrar Python 3.10+
+psql --version      # Debe mostrar PostgreSQL
+git --version       # Debe mostrar Git
+```
 
 ---
 
 ## 🚀 Inicio Rápido
 
-### 1. Verificar estado del servicio
+### Instalación desde Cero (Nueva Máquina)
 
+#### 0. Prerequisitos del Sistema (REQUERIDO)
+
+**IMPORTANTE:** Antes de instalar las dependencias de Python, necesitas instalar herramientas de compilación:
+
+**Fedora/RHEL/CentOS:**
 ```bash
-curl http://localhost:8000/health/
+sudo dnf install python3-devel postgresql-devel gcc gcc-c++
 ```
 
-**Respuesta:**
-```json
-{
-  "status": "ok",
-  "service": "API de Análisis del SIS",
-  "timestamp": "2025-10-29T10:30:00.123456",
-  "version": "1.0.0"
-}
-```
-
-### 2. Health check detallado
-
+**Ubuntu/Debian:**
 ```bash
-curl http://localhost:8000/health/detailed
+sudo apt-get install python3-dev libpq-dev gcc g++
 ```
 
-**Respuesta:**
-```json
-{
-  "status": "ok",
-  "service": "API de Análisis del SIS",
-  "timestamp": "2025-10-29T10:30:00.123456",
-  "version": "1.0.0",
-  "database": "connected",
-  "environment": "development",
-  "checks": {
-    "database": "✅ Conexión exitosa",
-    "query_test": "✅ Query de prueba exitosa",
-    "config": "✅ Configuración cargada"
-  }
-}
+**macOS:**
+```bash
+brew install postgresql gcc
+```
+
+Estos paquetes son necesarios para compilar numpy, pandas, scipy y psycopg2.
+
+#### 1. Clonar el Repositorio
+```bash
+git clone https://github.com/devbryan02/modelo-descriptivo-predictivo-sis.git
+cd modelo-prediccion-sis
+```
+
+#### 2. Crear Entorno Virtual
+```bash
+# Crear entorno virtual
+python -m venv .venv
+
+# Activar (Linux/Mac)
+source .venv/bin/activate
+
+# Activar (Windows)
+# .venv\Scripts\activate
+```
+
+#### 3. Instalar TODAS las Dependencias
+```bash
+# Esto instalará TODO lo necesario (FastAPI, scikit-learn, pandas, etc)
+pip install -r requirements.txt
+```
+
+**Nota:** El archivo `requirements.txt` incluye TODAS las dependencias necesarias:
+- FastAPI y Uvicorn (web framework)
+- SQLAlchemy y Alembic (base de datos)
+- scikit-learn, pandas, numpy, joblib (machine learning)
+- Y todas las demás librerías
+
+**Verificar instalación:**
+```bash
+# Ejecutar script de verificación
+python verificar_dependencias.py
+```
+
+Si todo está correcto verás ✅ en todos los módulos. Si falta algo, el script te dirá qué instalar.
+
+#### 4. Configurar Variables de Entorno
+
+Crear archivo `.env` en la raíz del proyecto:
+```bash
+DATABASE_URL=postgresql://user:password@localhost:5432/sis_db
+ENVIRONMENT=development
+API_VERSION=v1
+```
+
+**Importante:** Reemplaza `user`, `password` y `sis_db` con tus credenciales de PostgreSQL.
+
+#### 5. Ejecutar Migraciones (primera vez)
+```bash
+# Crear las tablas en la base de datos
+alembic upgrade head
+```
+
+#### 6. Entrenar Modelos de ML (primera vez)
+```bash
+# Esto entrenará los 3 modelos de Machine Learning
+python train_models.py
+```
+
+**Este proceso:**
+- Conecta a PostgreSQL
+- Extrae datos de las tablas
+- Entrena 3 modelos (Linear, Random Forest, Gradient Boosting)
+- Guarda modelos en `app/ml/models/`
+- **Tiempo estimado:** 5-15 minutos dependiendo de la cantidad de datos
+
+#### 7. Iniciar el Servidor
+```bash
+# Opción 1: Desarrollo (con reload automático)
+uvicorn app.main:app --reload
+
+# Opción 2: Usar el script
+python run_api.py
+```
+
+#### 8. Verificar Funcionamiento
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Ver documentación interactiva
+# Abrir en navegador: http://localhost:8000/docs
 ```
 
 ---
 
-## 📊 Endpoints de Análisis de Atenciones
+### Instalación Rápida (Si Ya Tienes el Entorno)
 
-### 1. Estadísticas Generales
-
-```http
-GET /api/v1/atenciones/estadisticas
-```
-
-Obtiene métricas generales de las atenciones del SIS.
-
-**Parámetros opcionales:**
-- `fecha_inicio` (date): Fecha de inicio para filtro (YYYY-MM-DD)
-- `fecha_fin` (date): Fecha de fin para filtro (YYYY-MM-DD)
-
-**Ejemplo:**
 ```bash
-curl "http://localhost:8000/api/v1/atenciones/estadisticas?fecha_inicio=2024-01-01&fecha_fin=2024-12-31"
+# Activar entorno virtual
+source .venv/bin/activate
+
+# Iniciar servidor
+python run_api.py
 ```
 
-**Respuesta:**
-```json
-{
-  "total_atenciones": 125430,
-  "costo_total": 15847293.50,
-  "costo_promedio": 126.32,
-  "distribucion_genero": {
-    "M": 58420,
-    "F": 67010
-  },
-  "fecha_inicio": "2024-01-01",
-  "fecha_fin": "2024-12-31",
-  "rango_fechas": {
-    "primera_atencion": "2024-01-01",
-    "ultima_atencion": "2024-12-31"
-  }
-}
-```
+---
 
-### 2. Análisis por Región
+## 📊 Ejemplos Rápidos
 
-```http
-GET /api/v1/atenciones/por-region
-```
+### Análisis Descriptivo
 
-Estadísticas de atenciones agrupadas por región (departamento).
-
-**Parámetros opcionales:**
-- `limit` (int): Máximo de regiones a mostrar (1-50, default: 10)
-- `fecha_inicio` (date): Fecha de inicio para filtro
-- `fecha_fin` (date): Fecha de fin para filtro
-
-**Ejemplo:**
 ```bash
-curl "http://localhost:8000/api/v1/atenciones/por-region?limit=5&fecha_inicio=2024-01-01"
+# Estadísticas generales
+curl "http://localhost:8000/api/v1/atenciones/estadisticas"
+
+# Top 5 regiones con más atenciones
+curl "http://localhost:8000/api/v1/atenciones/por-region?limit=5"
+
+# Tendencias mensuales
+curl "http://localhost:8000/api/v1/atenciones/tendencias?agrupacion=mes"
 ```
 
-**Respuesta:**
-```json
-[
-  {
-    "departamento": "LIMA",
-    "total_atenciones": 35420,
-    "costo_total": 4467890.50,
-    "costo_promedio": 126.15,
-    "numero_ipress": 287,
-    "porcentaje_total": 28.2
-  },
-  {
-    "departamento": "LA LIBERTAD",
-    "total_atenciones": 18750,
-    "costo_total": 2385672.80,
-    "costo_promedio": 127.23,
-    "numero_ipress": 156,
-    "porcentaje_total": 14.9
-  }
-]
-```
+### Predicción de Demanda
 
-### 3. Análisis por Servicio
-
-```http
-GET /api/v1/atenciones/por-servicio
-```
-
-Estadísticas de atenciones agrupadas por tipo de servicio médico.
-
-**Parámetros opcionales:**
-- `limit` (int): Máximo de servicios a mostrar (1-50, default: 10)
-- `fecha_inicio` (date): Fecha de inicio para filtro
-- `fecha_fin` (date): Fecha de fin para filtro
-
-**Ejemplo:**
 ```bash
-curl "http://localhost:8000/api/v1/atenciones/por-servicio?limit=5"
+# Predicción individual
+curl -X POST "http://localhost:8000/api/v1/prediccion/demanda" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "año": 2025,
+    "mes": 6,
+    "region": "LIMA",
+    "grupo_edad": "18-29",
+    "sexo": "FEMENINO",
+    "nivel_ipress": "II",
+    "servicio_categoria": "CONSULTA EXTERNA",
+    "plan_seguro": "SIS GRATUITO"
+  }'
+
+# Ver modelos disponibles
+curl "http://localhost:8000/api/v1/prediccion/modelos"
 ```
 
-**Respuesta:**
-```json
-[
-  {
-    "servicio_codigo": "001",
-    "servicio_nombre": "MEDICINA GENERAL",
-    "total_atenciones": 45620,
-    "costo_total": 5847293.50,
-    "costo_promedio": 128.15,
-    "porcentaje_total": 36.4
-  },
-  {
-    "servicio_codigo": "002",
-    "servicio_nombre": "PEDIATRÍA",
-    "total_atenciones": 28340,
-    "costo_total": 3421567.80,
-    "costo_promedio": 120.78,
-    "porcentaje_total": 22.6
-  }
-]
+---
+
+## 📖 Documentación Interactiva
+
+Una vez que el servidor esté corriendo:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **Endpoint raíz**: http://localhost:8000
+
+---
+
+## 🗄️ Estructura del Proyecto
+
+```
+modelo-prediccion-sis/
+├── app/
+│   ├── api/
+│   │   ├── endpoints/          # Controladores REST
+│   │   │   ├── atenciones.py   # Endpoints de análisis
+│   │   │   ├── prediccion.py   # Endpoints de ML
+│   │   │   └── health.py       # Health checks
+│   │   ├── routes/             # Configuración de rutas
+│   │   └── services/           # Lógica de negocio
+│   │       ├── atencion_service.py
+│   │       └── prediccion_service.py
+│   ├── core/
+│   │   ├── database.py         # Conexión PostgreSQL
+│   │   └── settings.py         # Configuración
+│   ├── models/                 # Modelos SQLAlchemy
+│   │   ├── atencion.py
+│   │   ├── ipress.py
+│   │   ├── servicio.py
+│   │   └── plan_seguro.py
+│   ├── schemas/                # Schemas Pydantic
+│   │   ├── atencion_schema.py
+│   │   └── prediccion_schema.py
+│   ├── ml/                     # Machine Learning
+│   │   ├── predictor.py        # Clase principal
+│   │   ├── models/             # Modelos .pkl
+│   │   └── training/           # Scripts de entrenamiento
+│   └── main.py                 # Entry point FastAPI
+├── alembic/                    # Migraciones de BD
+├── train_models.py             # Script de entrenamiento
+├── run_api.py                  # Script para ejecutar API
+├── requirements.txt            # Dependencias
+├── README.md                   # Este archivo
+├── README_DESCRIPTIVO.md       # Docs análisis descriptivo
+└── README_PREDICTIVO.md        # Docs predicción ML
 ```
 
-### 4. Análisis Demográfico
+---
 
-```http
-GET /api/v1/atenciones/demografico
+## 🔧 Stack Tecnológico
+
+### Backend
+- **FastAPI** - Framework web moderno
+- **SQLAlchemy** - ORM para PostgreSQL
+- **Pydantic** - Validación de datos
+- **Alembic** - Migraciones de BD
+
+### Machine Learning
+- **scikit-learn** - Modelos de ML
+- **pandas** - Procesamiento de datos
+- **numpy** - Operaciones numéricas
+- **joblib** - Serialización de modelos
+
+### Base de Datos
+- **PostgreSQL** - Base de datos relacional
+
+---
+
+## 🤖 Modelos de Machine Learning
+
+### 1. Regresión Lineal
+- Baseline simple
+- Rápido y ligero
+
+### 2. Random Forest ⭐ **Recomendado**
+- Mejor rendimiento
+- Robusto y preciso
+
+### 3. Gradient Boosting
+- Alta precisión
+- Patrones complejos
+
+**Métricas de evaluación:**
+- R² (Coeficiente de determinación)
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+
+---
+
+## 📝 Variables de Entorno
+
+| Variable | Descripción | Ejemplo |
+|----------|-------------|---------|
+| `DATABASE_URL` | URL de conexión PostgreSQL | `postgresql://user:pass@localhost:5432/db` |
+| `ENVIRONMENT` | Entorno de ejecución | `development`, `production` |
+| `API_VERSION` | Versión de la API | `v1` |
+| `SECRET_KEY` | Clave secreta (futuro) | `your-secret-key` |
+
+---
+
+## 🔍 Casos de Uso
+
+### 1. Dashboard de Análisis
+Obtener estadísticas para un dashboard regional:
+```bash
+curl "http://localhost:8000/api/v1/atenciones/por-region?limit=25"
 ```
 
-Análisis detallado por grupos de edad y género.
+### 2. Planificación de Recursos
+Predecir demanda futura para asignación de recursos:
+```bash
+curl -X POST "http://localhost:8000/api/v1/prediccion/demanda" \
+  -H "Content-Type: application/json" \
+  -d '{"año": 2025, "mes": 7, "region": "CUSCO", ...}'
+```
 
-**Parámetros opcionales:**
-- `fecha_inicio` (date): Fecha de inicio para filtro
-- `fecha_fin` (date): Fecha de fin para filtro
-
-**Ejemplo:**
+### 3. Reportes Demográficos
+Generar reportes de atención por grupo etario:
 ```bash
 curl "http://localhost:8000/api/v1/atenciones/demografico"
 ```
 
-**Respuesta:**
-```json
-{
-  "por_grupo_edad": {
-    "0-17": {
-      "total": 32450,
-      "porcentaje": 25.9,
-      "costo_promedio": 115.20
-    },
-    "18-29": {
-      "total": 28670,
-      "porcentaje": 22.8,
-      "costo_promedio": 125.45
-    },
-    "30-59": {
-      "total": 45320,
-      "porcentaje": 36.1,
-      "costo_promedio": 135.78
-    },
-    "60+": {
-      "total": 18990,
-      "porcentaje": 15.1,
-      "costo_promedio": 156.92
-    }
-  },
-  "por_genero": {
-    "M": {
-      "total": 58420,
-      "promedio_edad": 32.5,
-      "costo_promedio": 128.45
-    },
-    "F": {
-      "total": 67010,
-      "promedio_edad": 34.2,
-      "costo_promedio": 124.78
-    }
-  },
-  "estadisticas_edad": {
-    "edad_promedio": 33.4,
-    "edad_mediana": 31.0,
-    "edad_minima": 0,
-    "edad_maxima": 95
-  }
-}
-```
-
-### 5. Tendencias Temporales
-
-```http
-GET /api/v1/atenciones/tendencias
-```
-
-Series temporales de atenciones agrupadas por periodo.
-
-**Parámetros:**
-- `agrupacion` (string): Tipo de agrupación ("mes", "trimestre", "año")
-
-**Parámetros opcionales:**
-- `fecha_inicio` (date): Fecha de inicio para filtro
-- `fecha_fin` (date): Fecha de fin para filtro
-
-**Ejemplo:**
+### 4. Análisis de Tendencias
+Ver evolución temporal de atenciones:
 ```bash
-curl "http://localhost:8000/api/v1/atenciones/tendencias?agrupacion=mes&fecha_inicio=2024-01-01&fecha_fin=2024-12-31"
-```
-
-**Respuesta:**
-```json
-[
-  {
-    "periodo": "2024-01",
-    "total_atenciones": 9850,
-    "costo_total": 1247382.50,
-    "costo_promedio": 126.64
-  },
-  {
-    "periodo": "2024-02",
-    "total_atenciones": 10240,
-    "costo_total": 1295673.20,
-    "costo_promedio": 126.53
-  },
-  {
-    "periodo": "2024-03",
-    "total_atenciones": 11150,
-    "costo_total": 1412856.75,
-    "costo_promedio": 126.74
-  }
-]
-```
-
-### 6. Búsqueda con Filtros Múltiples
-
-```http
-GET /api/v1/atenciones/buscar
-```
-
-Búsqueda avanzada de atenciones con múltiples filtros y paginación.
-
-**Parámetros de paginación:**
-- `skip` (int): Número de registros a omitir (default: 0)
-- `limit` (int): Máximo de registros a retornar (1-1000, default: 100)
-
-**Parámetros de filtro opcionales:**
-- `departamento` (string): Filtro por departamento (búsqueda parcial)
-- `servicio_codigo` (string): Código exacto del servicio
-- `plan_codigo` (string): Código exacto del plan
-- `sexo` (string): Género ("M" o "F")
-- `edad_min` (int): Edad mínima (0-120)
-- `edad_max` (int): Edad máxima (0-120)
-- `fecha_inicio` (date): Fecha de inicio para filtro
-- `fecha_fin` (date): Fecha de fin para filtro
-
-**Ejemplo:**
-```bash
-curl "http://localhost:8000/api/v1/atenciones/buscar?departamento=LIMA&sexo=F&edad_min=18&edad_max=65&limit=50"
-```
-
-**Respuesta:**
-```json
-{
-  "atenciones": [
-    {
-      "id": 12345,
-      "fecha_atencion": "2024-03-15",
-      "sexo": "F",
-      "edad": 29,
-      "monto_pagado": 125.50,
-      "departamento": "LIMA",
-      "provincia": "LIMA",
-      "distrito": "SAN BORJA",
-      "ipress_nombre": "HOSPITAL NACIONAL DOS DE MAYO",
-      "servicio_nombre": "MEDICINA GENERAL",
-      "servicio_codigo": "001",
-      "plan_nombre": "SIS GRATUITO",
-      "plan_codigo": "GRT"
-    }
-  ],
-  "paginacion": {
-    "total": 2847,
-    "skip": 0,
-    "limit": 50,
-    "tiene_siguiente": true,
-    "tiene_anterior": false,
-    "pagina_actual": 1,
-    "total_paginas": 57
-  },
-  "filtros_aplicados": {
-    "departamento": "LIMA",
-    "sexo": "F",
-    "edad_min": 18,
-    "edad_max": 65,
-    "servicio_codigo": null,
-    "plan_codigo": null,
-    "fecha_inicio": null,
-    "fecha_fin": null
-  }
-}
+curl "http://localhost:8000/api/v1/atenciones/tendencias?agrupacion=mes"
 ```
 
 ---
 
-## 🔧 Endpoints de Monitoreo
-
-### 1. Ping Simple
-
-```http
-GET /health/ping
-```
-
-**Respuesta:**
-```json
-{
-  "message": "pong",
-  "timestamp": "2025-10-29T10:30:00.123456"
-}
-```
-
----
-
-## 📝 Códigos de Estado HTTP
-
-| Código | Descripción |
-|--------|-------------|
-| 200 | Solicitud exitosa |
-| 400 | Error en los parámetros de la solicitud |
-| 404 | Recurso no encontrado |
-| 422 | Error de validación de datos |
-| 500 | Error interno del servidor |
-| 503 | Servicio no disponible |
-
----
-
-## 🛠️ Ejemplos de Uso con Diferentes Lenguajes
-
-### JavaScript (Fetch API)
-
-```javascript
-// Obtener estadísticas generales
-async function obtenerEstadisticas(fechaInicio = null, fechaFin = null) {
-  const params = new URLSearchParams();
-  if (fechaInicio) params.append('fecha_inicio', fechaInicio);
-  if (fechaFin) params.append('fecha_fin', fechaFin);
-  
-  const response = await fetch(`http://localhost:8000/api/v1/atenciones/estadisticas?${params}`);
-  const data = await response.json();
-  
-  return data;
-}
-
-// Buscar atenciones con filtros
-async function buscarAtenciones(filtros) {
-  const params = new URLSearchParams();
-  Object.entries(filtros).forEach(([key, value]) => {
-    if (value !== null && value !== undefined) {
-      params.append(key, value);
-    }
-  });
-  
-  const response = await fetch(`http://localhost:8000/api/v1/atenciones/buscar?${params}`);
-  const data = await response.json();
-  
-  return data;
-}
-
-// Ejemplo de uso
-const estadisticas = await obtenerEstadisticas('2024-01-01', '2024-12-31');
-console.log(`Total de atenciones: ${estadisticas.total_atenciones}`);
-
-const atenciones = await buscarAtenciones({
-  departamento: 'LIMA',
-  sexo: 'F',
-  edad_min: 18,
-  limit: 100
-});
-console.log(`Encontradas ${atenciones.paginacion.total} atenciones`);
-```
-
-### Python (requests)
-
-```python
-import requests
-from datetime import date
-
-BASE_URL = "http://localhost:8000"
-
-def obtener_estadisticas(fecha_inicio=None, fecha_fin=None):
-    """Obtiene estadísticas generales de atenciones"""
-    params = {}
-    if fecha_inicio:
-        params['fecha_inicio'] = fecha_inicio
-    if fecha_fin:
-        params['fecha_fin'] = fecha_fin
-    
-    response = requests.get(
-        f"{BASE_URL}/api/v1/atenciones/estadisticas",
-        params=params
-    )
-    response.raise_for_status()
-    return response.json()
-
-def buscar_atenciones(**filtros):
-    """Busca atenciones con filtros múltiples"""
-    # Filtrar valores None
-    params = {k: v for k, v in filtros.items() if v is not None}
-    
-    response = requests.get(
-        f"{BASE_URL}/api/v1/atenciones/buscar",
-        params=params
-    )
-    response.raise_for_status()
-    return response.json()
-
-def obtener_tendencias(agrupacion="mes", fecha_inicio=None, fecha_fin=None):
-    """Obtiene tendencias temporales"""
-    params = {"agrupacion": agrupacion}
-    if fecha_inicio:
-        params['fecha_inicio'] = fecha_inicio
-    if fecha_fin:
-        params['fecha_fin'] = fecha_fin
-    
-    response = requests.get(
-        f"{BASE_URL}/api/v1/atenciones/tendencias",
-        params=params
-    )
-    response.raise_for_status()
-    return response.json()
-
-# Ejemplos de uso
-if __name__ == "__main__":
-    # Estadísticas del 2024
-    stats = obtener_estadisticas(
-        fecha_inicio="2024-01-01",
-        fecha_fin="2024-12-31"
-    )
-    print(f"Total de atenciones 2024: {stats['total_atenciones']}")
-    
-    # Buscar atenciones de mujeres en Lima
-    atenciones = buscar_atenciones(
-        departamento="LIMA",
-        sexo="F",
-        edad_min=18,
-        edad_max=65,
-        limit=50
-    )
-    print(f"Atenciones encontradas: {atenciones['paginacion']['total']}")
-    
-    # Tendencias mensuales
-    tendencias = obtener_tendencias(
-        agrupacion="mes",
-        fecha_inicio="2024-01-01",
-        fecha_fin="2024-12-31"
-    )
-    print(f"Meses analizados: {len(tendencias)}")
-```
-
-### PHP (cURL)
-
-```php
-<?php
-class SISApiClient {
-    private $baseUrl;
-    
-    public function __construct($baseUrl = "http://localhost:8000") {
-        $this->baseUrl = $baseUrl;
-    }
-    
-    private function makeRequest($endpoint, $params = []) {
-        $url = $this->baseUrl . $endpoint;
-        if (!empty($params)) {
-            $url .= '?' . http_build_query($params);
-        }
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Accept: application/json'
-        ]);
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode !== 200) {
-            throw new Exception("API Error: HTTP $httpCode");
-        }
-        
-        return json_decode($response, true);
-    }
-    
-    public function obtenerEstadisticas($fechaInicio = null, $fechaFin = null) {
-        $params = [];
-        if ($fechaInicio) $params['fecha_inicio'] = $fechaInicio;
-        if ($fechaFin) $params['fecha_fin'] = $fechaFin;
-        
-        return $this->makeRequest('/api/v1/atenciones/estadisticas', $params);
-    }
-    
-    public function buscarAtenciones($filtros = []) {
-        return $this->makeRequest('/api/v1/atenciones/buscar', $filtros);
-    }
-    
-    public function obtenerPorRegion($limit = 10, $fechaInicio = null, $fechaFin = null) {
-        $params = ['limit' => $limit];
-        if ($fechaInicio) $params['fecha_inicio'] = $fechaInicio;
-        if ($fechaFin) $params['fecha_fin'] = $fechaFin;
-        
-        return $this->makeRequest('/api/v1/atenciones/por-region', $params);
-    }
-}
-
-// Ejemplo de uso
-try {
-    $api = new SISApiClient();
-    
-    // Obtener estadísticas generales
-    $stats = $api->obtenerEstadisticas('2024-01-01', '2024-12-31');
-    echo "Total de atenciones: " . $stats['total_atenciones'] . "\n";
-    
-    // Top 5 regiones
-    $regiones = $api->obtenerPorRegion(5);
-    echo "Top 5 regiones por atenciones:\n";
-    foreach ($regiones as $region) {
-        echo "- {$region['departamento']}: {$region['total_atenciones']}\n";
-    }
-    
-} catch (Exception $e) {
-    echo "Error: " . $e->getMessage() . "\n";
-}
-?>
-```
-
----
-
-## 🚨 Manejo de Errores
-
-### Errores de Validación (422)
-
-```json
-{
-  "detail": [
-    {
-      "loc": ["query", "edad_min"],
-      "msg": "ensure this value is greater than or equal to 0",
-      "type": "value_error.number.not_ge",
-      "ctx": {"limit_value": 0}
-    }
-  ]
-}
-```
-
-### Error de Rango de Fechas (400)
-
-```json
-{
-  "detail": "La fecha de inicio no puede ser posterior a la fecha de fin"
-}
-```
-
-### Error de Servicio No Disponible (503)
-
-```json
-{
-  "detail": {
-    "message": "Servicio no disponible",
-    "error": "Database connection failed",
-    "health_status": {
-      "status": "error",
-      "database": "error",
-      "checks": {
-        "database": "❌ Sin conexión a BD"
-      }
-    }
-  }
-}
-```
-
----
-
-## 🔍 Consejos de Performance
-
-1. **Uso de filtros de fecha**: Siempre que sea posible, utiliza filtros de fecha para limitar el conjunto de datos.
-
-2. **Paginación**: Para búsquedas que pueden retornar muchos resultados, usa los parámetros `skip` y `limit`.
-
-3. **Límites apropiados**: No solicites más datos de los necesarios usando el parámetro `limit`.
-
-4. **Monitoreo**: Usa el endpoint `/health/detailed` para verificar el estado del sistema.
-
----
-
-## 📊 Casos de Uso Comunes
-
-### 1. Dashboard de Estadísticas Generales
+## 🛠️ Comandos Útiles
 
 ```bash
-# Obtener métricas generales del año actual
-curl "http://localhost:8000/api/v1/atenciones/estadisticas?fecha_inicio=2024-01-01&fecha_fin=2024-12-31"
+# Ejecutar API en desarrollo
+uvicorn app.main:app --reload
 
-# Top 10 regiones por atenciones
-curl "http://localhost:8000/api/v1/atenciones/por-region?limit=10"
+# Ejecutar API en producción
+python run_api.py
 
-# Análisis demográfico
-curl "http://localhost:8000/api/v1/atenciones/demografico"
-```
+# Entrenar todos los modelos
+python train_models.py
 
-### 2. Análisis de Tendencias
+# Entrenar un modelo específico
+python train_models.py --model random_forest
 
-```bash
-# Tendencias mensuales del 2024
-curl "http://localhost:8000/api/v1/atenciones/tendencias?agrupacion=mes&fecha_inicio=2024-01-01&fecha_fin=2024-12-31"
+# Ejecutar migraciones
+alembic upgrade head
 
-# Comparación trimestral
-curl "http://localhost:8000/api/v1/atenciones/tendencias?agrupacion=trimestre&fecha_inicio=2024-01-01&fecha_fin=2024-12-31"
-```
+# Crear nueva migración
+alembic revision --autogenerate -m "descripción"
 
-### 3. Reportes Específicos
-
-```bash
-# Atenciones de pediatría en Lima
-curl "http://localhost:8000/api/v1/atenciones/buscar?departamento=LIMA&servicio_codigo=002&limit=100"
-
-# Atenciones de adultos mayores (60+) en el primer trimestre
-curl "http://localhost:8000/api/v1/atenciones/buscar?edad_min=60&fecha_inicio=2024-01-01&fecha_fin=2024-03-31"
+# Ver logs del servidor
+tail -f logs/api.log
 ```
 
 ---
 
-## 🔗 Enlaces Útiles
+## 🐛 Solución de Problemas
 
-- **Documentación Swagger:** http://localhost:8000/docs
-- **Documentación ReDoc:** http://localhost:8000/redoc
-- **Health Check:** http://localhost:8000/health/
-- **Repositorio del proyecto:** (URL del repositorio)
+### 1. Error: "ModuleNotFoundError: No module named 'xxx'"
+
+**Causa:** Falta instalar dependencias.
+
+**Solución:**
+```bash
+# Verificar qué falta
+python verificar_dependencias.py
+
+# Instalar todo
+pip install -r requirements.txt
+```
+
+### 2. Error: "Modelo no encontrado"
+
+**Causa:** Los modelos ML no han sido entrenados.
+
+**Solución:**
+```bash
+python train_models.py
+```
+
+### 3. Error: "No se puede conectar a la base de datos"
+
+**Causa:** PostgreSQL no está corriendo o las credenciales en `.env` son incorrectas.
+
+**Solución:**
+```bash
+# Verificar que PostgreSQL esté corriendo
+psql --version
+
+# Probar conexión manualmente
+psql -U usuario -d sis_db -c "SELECT 1;"
+
+# Revisar archivo .env
+cat .env
+```
+
+### 4. Error en otra máquina: "No encuentra módulos"
+
+**Causa:** El entorno virtual no está activado o las dependencias no están instaladas.
+
+**Solución:**
+```bash
+# 1. Activar entorno virtual
+source .venv/bin/activate  # Linux/Mac
+# .venv\Scripts\activate   # Windows
+
+# 2. Verificar que pip use el entorno virtual
+which pip  # Debe apuntar a .venv/bin/pip
+
+# 3. Instalar dependencias
+pip install -r requirements.txt
+
+# 4. Verificar instalación
+python verificar_dependencias.py
+```
+
+### 5. Re-entrenar modelos
+
+Si los datos cambiaron o quieres actualizar los modelos:
+```bash
+python train_models.py --model all
+```
+
+### 6. Verificación Completa del Sistema
+
+```bash
+# 1. Verificar Python
+python --version
+
+# 2. Verificar entorno virtual activo
+which python  # Debe apuntar a .venv
+
+# 3. Verificar dependencias
+python verificar_dependencias.py
+
+# 4. Verificar base de datos
+psql -U usuario -d sis_db -c "SELECT COUNT(*) FROM atenciones;"
+
+# 5. Verificar modelos entrenados
+ls -lh app/ml/models/*.pkl
+```
 
 ---
 
-## 👥 Equipo de Desarrollo
+## 🔄 Mejoras Recientes del Predictor (v2.0)
+
+El predictor ha sido refactorizado con mejoras significativas para forecasting de demanda:
+
+### ✨ Nuevas Características
+
+1. **Features Temporales**
+   - `lag_1`: Valor del mes anterior
+   - `rolling_mean_3`: Promedio móvil de 3 meses
+   - `rolling_mean_6`: Promedio móvil de 6 meses
+   - Agrupados por: región, sexo, grupo_edad, servicio_categoria, plan_seguro
+
+2. **Target Encoding**
+   - Reemplaza LabelEncoder para variables de alta cardinalidad
+   - Variables: `region`, `servicio_categoria`, `plan_seguro`
+   - Mejor captura de relación con el target
+
+3. **Modelo Poisson GLM** (NUEVO)
+   - Ideal para datos de conteo como `cantidad_atenciones`
+   - Garantiza predicciones no-negativas
+   - Uso: `SISPredictor(model_type="poisson")`
+
+4. **Scaling Selectivo**
+   - Linear y Poisson: ✅ Con scaling
+   - Random Forest y Gradient Boosting: ❌ Sin scaling (mejor performance)
+
+5. **Output Mejorado**
+   ```python
+   {
+     "expected_value": 12.5,
+     "rounded_prediction": 12,
+     "demand_level": "MEDIUM"  # LOW/MEDIUM/HIGH
+   }
+   ```
+
+### 📝 Modelos Disponibles
+
+- `linear` - Regresión lineal (baseline)
+- `poisson` - GLM Poisson (recomendado para conteos)
+- `random_forest` - Random Forest
+- `gradient_boosting` - Gradient Boosting
+
+### 🧪 Verificar Refactor
+
+```bash
+python test_refactor.py
+```
+
+---
+
+## 📚 Documentación Adicional
+
+- **[README_DESCRIPTIVO.md](./README_DESCRIPTIVO.md)** - Documentación completa de endpoints de análisis
+- **[README_PREDICTIVO.md](./README_PREDICTIVO.md)** - Documentación completa de endpoints de predicción
+- **[REQUERIMENTS.MD](./REQUERIMENTS.MD)** - Especificación técnica del proyecto
+- **[IMPLEMENTACION_COMPLETADA.md](./IMPLEMENTACION_COMPLETADA.md)** - Resumen de implementación
+
+---
+
+## 🎓 Equipo de Desarrollo
 
 - Cardenas Muñoz, Brayan Yonque
-- Conde Nuñez, Percy Emerson  
+- Conde Nuñez, Percy Emerson
 - Huamán Mallqui, Abdias Eri
 - Lopez Quispe, Brady
 - Mitma Arango, Pilar Dana
@@ -705,5 +528,19 @@ curl "http://localhost:8000/api/v1/atenciones/buscar?edad_min=60&fecha_inicio=20
 
 ---
 
-**Última actualización:** Octubre 2025
-**Versión de la API:** 1.0.0
+## 📅 Información del Proyecto
+
+**Institución:** Universidad  
+**Curso:** Análisis de Datos  
+**Año:** 2025  
+**Versión API:** 1.0.0
+
+---
+
+## 📄 Licencia
+
+Este proyecto es parte de un trabajo académico para el análisis del Sistema Integral de Salud (SIS) del Perú.
+
+---
+
+**¿Necesitas ayuda?** Consulta la documentación interactiva en http://localhost:8000/docs

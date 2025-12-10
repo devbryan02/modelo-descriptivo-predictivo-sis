@@ -371,7 +371,7 @@ def main():
     start_time = time.time()
     
     logger.info("Iniciando ETL Ultra Rápido para SIS (SIN VALIDACIONES)")
-    logger.info(f"📁 Archivo CSV: {CSV_PATH}")
+    logger.info(f"Archivo CSV: {CSV_PATH}")
     
     try:
         # Conectar a la base de datos
@@ -397,8 +397,8 @@ def main():
         elapsed_time = time.time() - start_time
         records_per_second = stats['inserted'] / elapsed_time if elapsed_time > 0 else 0
         
-        logger.info(f"🏁 ETL COMPLETADO!")
-        logger.info(f"⏱️  Tiempo total: {elapsed_time:.2f} segundos")
+        logger.info(f"ETL COMPLETADO!")
+        logger.info(f"Tiempo total: {elapsed_time:.2f} segundos")
         logger.info(f"Velocidad: {records_per_second:,.0f} registros/segundo")
         logger.info(f"Registros insertados: {stats['inserted']:,}")
         

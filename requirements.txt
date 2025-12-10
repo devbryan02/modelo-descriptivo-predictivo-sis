@@ -1,35 +1,55 @@
-# Dependencias para proyecto de análisis y predicción del SIS
-# Consulta requirements.md para contexto completo
+# ============================================================
+# DEPENDENCIAS - Sistema de Análisis y Predicción del SIS
+# ============================================================
+# Este archivo contiene TODAS las dependencias necesarias
+# para ejecutar el proyecto en cualquier máquina
+#
+# Instalación: pip install -r requirements.txt
+# ============================================================
 
-# Framework web
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
-python-multipart==0.0.6
+# ==================== Framework Web ====================
+fastapi>=0.110.0          # Framework web moderno y rápido
+uvicorn[standard]>=0.27.0 # Servidor ASGI con extras (websockets, watchfiles)
+pydantic>=2.7.0           # Validación de datos (>=2.7 compatible con Python 3.13)
+pydantic-settings>=2.2.0  # Gestión de configuración
+python-multipart>=0.0.6   # Soporte para form-data y file uploads
 
-# Base de datos
-sqlalchemy==2.0.25
-psycopg2-binary==2.9.9
-alembic==1.13.1
+# ==================== Base de Datos ====================
+sqlalchemy>=2.0.36        # ORM para PostgreSQL (>=2.0.36 compatible con Python 3.13)
+psycopg2-binary>=2.9.10   # Driver PostgreSQL (>=2.9.10 tiene wheels para Python 3.13)
+alembic>=1.13.1           # Migraciones de base de datos
 
-# Data Science y ML
-pandas==2.1.4
-numpy==1.26.3
-scikit-learn==1.4.0
-joblib==1.3.2
-matplotlib==3.8.2
-seaborn==0.13.1
+# ==================== Data Science & ML ====================
+# Core científico
+pandas>=2.2.0             # Manipulación de datos (>=2.2 tiene wheels para Python 3.13)
+numpy>=1.26.0             # Operaciones numéricas
+scipy>=1.12.0             # Funciones científicas
 
-# Utilidades
-python-dotenv==1.0.0
-tqdm==4.66.1
-unidecode==1.3.7
+# Machine Learning
+scikit-learn>=1.4.0       # Modelos ML (Random Forest, Gradient Boosting, etc)
+statsmodels>=0.14.0       # GLM con Poisson para datos de conteo
+joblib>=1.3.2             # Serialización de modelos ML
 
-# Testing
-pytest==7.4.4
-pytest-cov==4.1.0
-httpx==0.26.0
+# Visualización (opcional, pero incluido en requirements)
+matplotlib==3.8.2         # Gráficos básicos
+seaborn==0.13.1           # Gráficos estadísticos
 
-# Validación y seguridad
-email-validator==2.1.0
+# ==================== Utilidades ====================
+python-dotenv==1.0.0      # Carga de variables de entorno desde .env
+tqdm==4.66.1              # Barras de progreso
+unidecode==1.3.7          # Normalización de texto (para regiones)
+
+# ==================== Testing (opcional) ====================
+pytest==7.4.4             # Framework de testing
+pytest-cov==4.1.0         # Cobertura de código
+httpx==0.26.0             # Cliente HTTP para testing de FastAPI
+
+# ==================== Validación ====================
+email-validator==2.1.0    # Validación de emails (requerido por Pydantic)
+
+# ==================== NOTAS ====================
+# 1. Ejecutar: pip install -r requirements.txt
+# 2. Para desarrollo: pip install -e .
+# 3. Python 3.10+ requerido
+# 4. PostgreSQL debe estar instalado y corriendo
+# ============================================================

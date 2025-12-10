@@ -1,0 +1,9 @@
+# Modelos entrenados (archivos grandes)
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+
+# Mantener el directorio pero no los modelos
+!.gitkeep
