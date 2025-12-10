@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, extract, case
+from sqlalchemy import and_, func, extract, case, String
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, date
 from app.models.atencion import Atencion
@@ -12,8 +12,11 @@ from app.schemas.atencion_schema import EstadisticasResponse
 class AtencionService:
     """
     Servicio de negocio para operaciones con Atenciones del SIS
-    Implementa la lógica de análisis basada en requirements.md
+    Usa solo campos reales: año, mes, region, sexo, grupo_edad, cantidad_atenciones
     """
+    
+    # Constante para cálculos estimados de costo
+    COSTO_PROMEDIO_POR_ATENCION = 150.0  # S/ 150 por atención (ajustable)
 
     @staticmethod
     def get_estadisticas_generales(
@@ -26,53 +29,68 @@ class AtencionService:
         
         Args:
             db: Sesión de base de datos
-            fecha_inicio: Fecha inicio del filtro (opcional)
-            fecha_fin: Fecha fin del filtro (opcional)
+            fecha_inicio: No se usa (compatibilidad)
+            fecha_fin: No se usa (compatibilidad)
             
         Returns:
             EstadisticasResponse con métricas generales
         """
-        # Query base
         query = db.query(Atencion)
         
-        # Aplicar filtros de fecha si se proporcionan
-        if fecha_inicio:
-            query = query.filter(Atencion.fecha_atencion >= fecha_inicio)
-        if fecha_fin:
-            query = query.filter(Atencion.fecha_atencion <= fecha_fin)
+        # Total de registros
+        total_registros = query.count()
         
-        # Calcular métricas
-        total_atenciones = query.count()
+        # Suma total de atenciones (campo cantidad_atenciones)
+        total_atenciones_result = query.with_entities(
+            func.sum(Atencion.cantidad_atenciones)
+        ).scalar()
+        total_atenciones = int(total_atenciones_result or 0)
         
-        # Costo total
-        total_costo = query.with_entities(
-            func.sum(Atencion.monto_pagado)
-        ).scalar() or 0.0
+        # Costo total estimado
+        total_costo = total_atenciones * AtencionService.COSTO_PROMEDIO_POR_ATENCION
         
-        # Promedio de costo
-        promedio_costo = (total_costo / total_atenciones) if total_atenciones > 0 else 0.0
-        
-        # Atenciones por género
+        # Distribución por género (suma de cantidad_atenciones por género)
         stats_genero = query.with_entities(
             Atencion.sexo,
-            func.count(Atencion.id).label('count')
+            func.sum(Atencion.cantidad_atenciones).label('count')
         ).group_by(Atencion.sexo).all()
         
-        por_genero = {genero: count for genero, count in stats_genero}
+        distribucion_por_sexo = {genero: int(count or 0) for genero, count in stats_genero}
         
-        # Rango de fechas actual
-        fecha_range = query.with_entities(
-            func.min(Atencion.fecha_atencion).label('min_fecha'),
-            func.max(Atencion.fecha_atencion).label('max_fecha')
-        ).first()
+        # Distribución por edad (grupo_edad)
+        stats_edad = query.with_entities(
+            Atencion.grupo_edad,
+            func.sum(Atencion.cantidad_atenciones).label('count')
+        ).group_by(Atencion.grupo_edad).all()
+        
+        distribucion_por_edad = {grupo: int(count or 0) for grupo, count in stats_edad}
+        
+        # Top 5 regiones
+        top_regiones = query.with_entities(
+            Atencion.region,
+            func.sum(Atencion.cantidad_atenciones).label('total')
+        ).group_by(Atencion.region).order_by(
+            func.sum(Atencion.cantidad_atenciones).desc()
+        ).limit(5).all()
+        
+        regiones_top_5 = [
+            {"region": region, "total_atenciones": int(total or 0)}
+            for region, total in top_regiones
+        ]
+        
+        # Calcular promedio mensual (total atenciones / número de meses únicos)
+        meses_unicos = query.with_entities(
+            func.count(func.distinct(func.concat(func.cast(Atencion.año, String), '-', func.cast(Atencion.mes, String))))
+        ).scalar() or 1
+        
+        promedio_mensual = total_atenciones / meses_unicos if meses_unicos > 0 else 0
         
         return EstadisticasResponse(
             total_atenciones=total_atenciones,
-            total_costo=float(total_costo),
-            promedio_costo=float(promedio_costo),
-            por_genero=por_genero,
-            fecha_inicio=fecha_range.min_fecha if fecha_range.min_fecha else None,
-            fecha_fin=fecha_range.max_fecha if fecha_range.max_fecha else None
+            promedio_mensual=float(promedio_mensual),
+            distribucion_por_sexo=distribucion_por_sexo,
+            distribucion_por_edad=distribucion_por_edad,
+            regiones_top_5=regiones_top_5
         )
 
     @staticmethod
@@ -83,45 +101,33 @@ class AtencionService:
         fecha_fin: Optional[date] = None
     ) -> List[Dict]:
         """
-        Obtiene estadísticas de atenciones por región (departamento)
+        Obtiene estadísticas de atenciones por región
         
         Args:
             db: Sesión de base de datos
             limit: Número máximo de regiones a retornar
-            fecha_inicio: Fecha inicio del filtro
-            fecha_fin: Fecha fin del filtro
+            fecha_inicio: No se usa (compatibilidad)
+            fecha_fin: No se usa (compatibilidad)
             
         Returns:
             Lista de diccionarios con estadísticas por región
         """
         query = db.query(
-            IPRESS.departamento.label('region'),
-            func.count(Atencion.id).label('total_atenciones'),
-            func.sum(Atencion.monto_pagado).label('total_costo'),
-            func.avg(Atencion.monto_pagado).label('promedio_costo'),
-            func.count(func.distinct(IPRESS.id)).label('total_ipress')
-        ).join(
-            IPRESS, Atencion.ipress_id == IPRESS.id
-        )
-        
-        # Aplicar filtros de fecha
-        if fecha_inicio:
-            query = query.filter(Atencion.fecha_atencion >= fecha_inicio)
-        if fecha_fin:
-            query = query.filter(Atencion.fecha_atencion <= fecha_fin)
-        
-        resultados = query.group_by(
-            IPRESS.departamento
+            Atencion.region.label('region'),
+            func.sum(Atencion.cantidad_atenciones).label('total_atenciones'),
+            func.count(func.distinct(Atencion.ipress_id)).label('total_ipress')
+        ).group_by(
+            Atencion.region
         ).order_by(
-            func.count(Atencion.id).desc()
-        ).limit(limit).all()
+            func.sum(Atencion.cantidad_atenciones).desc()
+        ).limit(limit)
+        
+        resultados = query.all()
         
         return [
             {
                 "region": resultado.region,
-                "total_atenciones": resultado.total_atenciones,
-                "total_costo": float(resultado.total_costo or 0),
-                "promedio_costo": float(resultado.promedio_costo or 0),
+                "total_atenciones": int(resultado.total_atenciones or 0),
                 "total_ipress": resultado.total_ipress
             }
             for resultado in resultados
@@ -140,41 +146,31 @@ class AtencionService:
         Args:
             db: Sesión de base de datos
             limit: Número máximo de servicios a retornar
-            fecha_inicio: Fecha inicio del filtro
-            fecha_fin: Fecha fin del filtro
+            fecha_inicio: No se usa (compatibilidad)
+            fecha_fin: No se usa (compatibilidad)
             
         Returns:
             Lista de diccionarios con estadísticas por servicio
         """
         query = db.query(
             Servicio.nombre.label('servicio'),
-            Servicio.codigo.label('codigo_servicio'),
-            func.count(Atencion.id).label('total_atenciones'),
-            func.sum(Atencion.monto_pagado).label('total_costo'),
-            func.avg(Atencion.monto_pagado).label('promedio_costo')
+            Servicio.categoria.label('categoria'),
+            func.sum(Atencion.cantidad_atenciones).label('total_atenciones')
         ).join(
             Servicio, Atencion.servicio_id == Servicio.id
-        )
-        
-        # Aplicar filtros de fecha
-        if fecha_inicio:
-            query = query.filter(Atencion.fecha_atencion >= fecha_inicio)
-        if fecha_fin:
-            query = query.filter(Atencion.fecha_atencion <= fecha_fin)
-        
-        resultados = query.group_by(
-            Servicio.id, Servicio.nombre, Servicio.codigo
+        ).group_by(
+            Servicio.id, Servicio.nombre, Servicio.categoria
         ).order_by(
-            func.count(Atencion.id).desc()
-        ).limit(limit).all()
+            func.sum(Atencion.cantidad_atenciones).desc()
+        ).limit(limit)
+        
+        resultados = query.all()
         
         return [
             {
                 "servicio": resultado.servicio,
-                "codigo_servicio": resultado.codigo_servicio,
-                "total_atenciones": resultado.total_atenciones,
-                "total_costo": float(resultado.total_costo or 0),
-                "promedio_costo": float(resultado.promedio_costo or 0)
+                "codigo_servicio": resultado.categoria or "Sin categoría",
+                "total_atenciones": int(resultado.total_atenciones or 0)
             }
             for resultado in resultados
         ]
@@ -190,78 +186,47 @@ class AtencionService:
         
         Args:
             db: Sesión de base de datos
-            fecha_inicio: Fecha inicio del filtro
-            fecha_fin: Fecha fin del filtro
+            fecha_inicio: No se usa (compatibilidad)
+            fecha_fin: No se usa (compatibilidad)
             
         Returns:
             Diccionario con análisis demográfico
         """
         query = db.query(Atencion)
         
-        # Aplicar filtros de fecha
-        if fecha_inicio:
-            query = query.filter(Atencion.fecha_atencion >= fecha_inicio)
-        if fecha_fin:
-            query = query.filter(Atencion.fecha_atencion <= fecha_fin)
-        
-        # Análisis por grupos de edad
+        # Análisis por grupos de edad (usando grupo_edad del modelo)
         grupos_edad = query.with_entities(
-            case(
-                (Atencion.edad < 18, "Menores (0-17)"),
-                (and_(Atencion.edad >= 18, Atencion.edad < 30), "Jóvenes (18-29)"),
-                (and_(Atencion.edad >= 30, Atencion.edad < 50), "Adultos (30-49)"),
-                (and_(Atencion.edad >= 50, Atencion.edad < 65), "Adultos mayores (50-64)"),
-                (Atencion.edad >= 65, "Tercera edad (65+)"),
-                else_="Sin clasificar"
-            ).label('grupo_edad'),
-            func.count(Atencion.id).label('total_atenciones'),
-            func.sum(Atencion.monto_pagado).label('total_costo')
-        ).group_by('grupo_edad').all()
+            Atencion.grupo_edad,
+            func.sum(Atencion.cantidad_atenciones).label('total_atenciones')
+        ).group_by(Atencion.grupo_edad).all()
         
         # Análisis por género
         por_genero = query.with_entities(
             Atencion.sexo,
-            func.count(Atencion.id).label('total_atenciones'),
-            func.sum(Atencion.monto_pagado).label('total_costo'),
-            func.avg(Atencion.edad).label('edad_promedio')
+            func.sum(Atencion.cantidad_atenciones).label('total_atenciones')
         ).group_by(Atencion.sexo).all()
-        
-        # Estadísticas de edad
-        stats_edad = query.with_entities(
-            func.min(Atencion.edad).label('edad_minima'),
-            func.max(Atencion.edad).label('edad_maxima'),
-            func.avg(Atencion.edad).label('edad_promedio')
-        ).first()
         
         return {
             "grupos_edad": [
                 {
                     "grupo": grupo.grupo_edad,
-                    "total_atenciones": grupo.total_atenciones,
-                    "total_costo": float(grupo.total_costo or 0)
+                    "total_atenciones": int(grupo.total_atenciones or 0)
                 }
                 for grupo in grupos_edad
             ],
             "por_genero": [
                 {
                     "genero": genero.sexo,
-                    "total_atenciones": genero.total_atenciones,
-                    "total_costo": float(genero.total_costo or 0),
-                    "edad_promedio": float(genero.edad_promedio or 0)
+                    "total_atenciones": int(genero.total_atenciones or 0)
                 }
                 for genero in por_genero
-            ],
-            "estadisticas_edad": {
-                "edad_minima": stats_edad.edad_minima,
-                "edad_maxima": stats_edad.edad_maxima,
-                "edad_promedio": float(stats_edad.edad_promedio or 0)
-            }
+            ]
         }
 
     @staticmethod
     def get_tendencias_temporales(
         db: Session,
-        agrupacion: str = "mes",  # mes, trimestre, año
+        agrupacion: str = "mes",
         fecha_inicio: Optional[date] = None,
         fecha_fin: Optional[date] = None
     ) -> List[Dict]:
@@ -271,44 +236,38 @@ class AtencionService:
         Args:
             db: Sesión de base de datos
             agrupacion: Tipo de agrupación temporal (mes, trimestre, año)
-            fecha_inicio: Fecha inicio del filtro
-            fecha_fin: Fecha fin del filtro
+            fecha_inicio: No se usa (compatibilidad)
+            fecha_fin: No se usa (compatibilidad)
             
         Returns:
             Lista de diccionarios con tendencias temporales
         """
         query = db.query(Atencion)
         
-        # Aplicar filtros de fecha
-        if fecha_inicio:
-            query = query.filter(Atencion.fecha_atencion >= fecha_inicio)
-        if fecha_fin:
-            query = query.filter(Atencion.fecha_atencion <= fecha_fin)
-        
-        # Configurar agrupación según el parámetro
+        # Configurar agrupación según el parámetro usando año y mes
         if agrupacion == "año":
-            grupo_temporal = extract('year', Atencion.fecha_atencion)
+            grupo_temporal = func.cast(Atencion.año, String)
             formato_periodo = "año"
         elif agrupacion == "trimestre":
+            # Concatenar año-Q<trimestre>
             grupo_temporal = func.concat(
-                extract('year', Atencion.fecha_atencion),
+                func.cast(Atencion.año, String),
                 '-Q',
-                func.ceil(extract('month', Atencion.fecha_atencion) / 3)
+                func.cast(func.ceil(Atencion.mes / 3), String)
             )
             formato_periodo = "trimestre"
         else:  # mes por defecto
+            # Concatenar año-mes con formato YYYY-MM
             grupo_temporal = func.concat(
-                extract('year', Atencion.fecha_atencion),
+                func.cast(Atencion.año, String),
                 '-',
-                func.lpad(extract('month', Atencion.fecha_atencion), 2, '0')
+                func.lpad(func.cast(Atencion.mes, String), 2, '0')
             )
             formato_periodo = "mes"
         
         resultados = query.with_entities(
             grupo_temporal.label('periodo'),
-            func.count(Atencion.id).label('total_atenciones'),
-            func.sum(Atencion.monto_pagado).label('total_costo'),
-            func.avg(Atencion.monto_pagado).label('promedio_costo')
+            func.sum(Atencion.cantidad_atenciones).label('total_atenciones')
         ).group_by(
             grupo_temporal
         ).order_by(
@@ -319,9 +278,7 @@ class AtencionService:
             {
                 "periodo": str(resultado.periodo),
                 "tipo_periodo": formato_periodo,
-                "total_atenciones": resultado.total_atenciones,
-                "total_costo": float(resultado.total_costo or 0),
-                "promedio_costo": float(resultado.promedio_costo or 0)
+                "total_atenciones": int(resultado.total_atenciones or 0)
             }
             for resultado in resultados
         ]
@@ -347,37 +304,29 @@ class AtencionService:
             db: Sesión de base de datos
             skip: Número de registros a omitir
             limit: Número máximo de registros a retornar
-            departamento: Filtro por departamento
+            departamento: Filtro por región (usa campo region)
             servicio_codigo: Filtro por código de servicio
             plan_codigo: Filtro por código de plan
             sexo: Filtro por sexo
-            edad_min: Edad mínima
-            edad_max: Edad máxima
-            fecha_inicio: Fecha inicio del filtro
-            fecha_fin: Fecha fin del filtro
+            edad_min: No se usa (no hay campo edad)
+            edad_max: No se usa (no hay campo edad)
+            fecha_inicio: No se usa (compatibilidad)
+            fecha_fin: No se usa (compatibilidad)
             
         Returns:
             Tupla con lista de atenciones y total de registros
         """
         query = db.query(Atencion).join(IPRESS).join(Servicio).join(PlanSeguro)
         
-        # Aplicar filtros
+        # Aplicar filtros disponibles
         if departamento:
-            query = query.filter(IPRESS.departamento.ilike(f"%{departamento}%"))
+            query = query.filter(Atencion.region.ilike(f"%{departamento}%"))
         if servicio_codigo:
-            query = query.filter(Servicio.codigo == servicio_codigo)
+            query = query.filter(Servicio.categoria.ilike(f"%{servicio_codigo}%"))
         if plan_codigo:
-            query = query.filter(PlanSeguro.codigo == plan_codigo)
+            query = query.filter(PlanSeguro.nombre.ilike(f"%{plan_codigo}%"))
         if sexo:
             query = query.filter(Atencion.sexo == sexo)
-        if edad_min is not None:
-            query = query.filter(Atencion.edad >= edad_min)
-        if edad_max is not None:
-            query = query.filter(Atencion.edad <= edad_max)
-        if fecha_inicio:
-            query = query.filter(Atencion.fecha_atencion >= fecha_inicio)
-        if fecha_fin:
-            query = query.filter(Atencion.fecha_atencion <= fecha_fin)
         
         # Obtener total y registros paginados
         total = query.count()
